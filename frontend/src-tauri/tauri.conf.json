@@ -47,8 +47,6 @@
       "minimumSystemVersion": "11.0",
       "providerShortName": "SCIngenierie",
       "signingIdentity": null
-    },
-    "createUpdaterArtifacts": true,
-    "resources": []
+    }
   }
 }
