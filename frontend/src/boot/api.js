@@ -1,5 +1,4 @@
 import axios from 'axios'
-import { useAuthStore } from '../stores/auth'
 
 // Detect Tauri vs browser
 const isTauri = !!(window.__TAURI_INTERNALS__)
@@ -15,11 +14,11 @@ const api = axios.create({
   headers: { 'Content-Type': 'application/json' }
 })
 
-// Interceptor: attach token
+// Interceptor: attach token from localStorage (avoids circular dep with auth store)
 api.interceptors.request.use(config => {
-  const auth = useAuthStore()
-  if (auth.token) {
-    config.headers.Authorization = `Bearer ${auth.token}`
+  const token = localStorage.getItem('mailapp_token')
+  if (token) {
+    config.headers.Authorization = `Bearer ${token}`
   }
   return config
 })
@@ -29,8 +28,7 @@ api.interceptors.response.use(
   res => res,
   err => {
     if (err.response?.status === 401) {
-      const auth = useAuthStore()
-      auth.logout()
+      localStorage.removeItem('mailapp_token')
       window.location.href = isTauri ? '/' : '/login'
     }
     return Promise.reject(err)
