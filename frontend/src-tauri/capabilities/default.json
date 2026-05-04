@@ -16,14 +16,6 @@
     "dialog:allow-open",
     "dialog:allow-save",
     "dialog:allow-message",
-    "dialog:allow-ask",
-    {
-      "identifier": "http:default",
-      "allow": [
-        { "url": "https://op13.scigroup.fr/**" },
-        { "url": "http://192.168.1.242:**" },
-        { "url": "http://localhost:**" }
-      ]
-    }
+    "dialog:allow-ask"
   ]
 }
