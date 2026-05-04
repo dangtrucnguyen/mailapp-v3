@@ -36,13 +36,18 @@ const password = ref('')
 const error = ref('')
 
 async function onSubmit() {
-  // Store server URL + update axios base
-  const url = serverUrl.value.replace(/\/+$/, '')
-  localStorage.setItem('mailapp_api_url', url)
-  api.defaults.baseURL = url + '/api'
+  try {
+    // Store server URL + update axios base
+    const url = serverUrl.value.replace(/\/+$/, '')
+    localStorage.setItem('mailapp_api_url', url)
+    api.defaults.baseURL = url + '/api'
 
-  const r = await auth.login(username.value, password.value)
-  if (r.ok) router.push('/')
-  else error.value = r.error
+    const r = await auth.login(username.value, password.value)
+    if (r.ok) router.push('/')
+    else error.value = r.error
+  } catch (e) {
+    console.error('LoginPage submit error:', e)
+    error.value = 'Erreur technique: ' + (e.message || String(e))
+  }
 }
 </script>
