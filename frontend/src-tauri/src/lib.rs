@@ -12,15 +12,8 @@ fn get_api_url() -> String {
 }
 
 #[tauri::command]
-fn set_dock_badge(app: tauri::AppHandle, count: u32) {
-    #[cfg(target_os = "macos")]
-    {
-        use tauri::Manager;
-        let _ = app;
-        // On macOS we could use NSApplication dock badge
-        // For now we log it — macOS-specific plugin coming in Tauri 2.1
-    }
-    let _ = (app, count);
+fn set_dock_badge(_app: tauri::AppHandle, _count: u32) {
+    // Dock badge: macOS-specific, implemented via tauri-plugin in future version
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
