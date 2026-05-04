@@ -18,7 +18,8 @@ export const useAuthStore = defineStore('auth', () => {
       localStorage.setItem('mailapp_token', token.value)
       return { ok: true }
     } catch (e) {
-      return { ok: false, error: e.response?.data?.detail || 'Erreur de connexion' }
+      const detail = e.response?.data?.detail || e.message || 'Erreur de connexion'
+      return { ok: false, error: detail }
     } finally {
       loading.value = false
     }
