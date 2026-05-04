@@ -4,6 +4,7 @@ from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import RedirectResponse, HTMLResponse, FileResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.staticfiles import StaticFiles
+from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 import os
 
@@ -37,6 +38,21 @@ async def lifespan(app: FastAPI):
     yield
 
 app = FastAPI(title=APP_NAME, lifespan=lifespan)
+
+# CORS: allow Tauri desktop app (tauri://localhost origin) + web clients
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[
+        "https://op13.scigroup.fr",
+        "http://192.168.1.242:6000",
+        "http://localhost:*",
+        "tauri://localhost",
+        "https://tauri.localhost",
+    ],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # Static assets (Vue SPA + legacy)
 app.mount('/assets', StaticFiles(directory=os.path.join(SPA_DIR, 'assets')), name='spa_assets')
