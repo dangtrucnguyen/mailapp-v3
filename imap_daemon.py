@@ -71,6 +71,15 @@ def process_email(raw, mailbox, labels=None):
             log.info(f"📥 {result.get('sender','?')[:30]} | {result.get('subject','?')[:50]}")
             if result.get('project_code'):
                 log.info(f"   🔗 {result['project_code']}")
+            # Marquer comme envoyé si l'expéditeur est l'utilisateur
+            if mailbox == 'INBOX' and result.get('sender') == IMAP_USER:
+                conn_db = get_connection()
+                conn_db.execute(
+                    "UPDATE emails SET labels = labels || ' sent' WHERE hash = ? AND labels NOT LIKE '%sent%'",
+                    (result['hash'],)
+                )
+                conn_db.commit()
+                log.info(f"   📤 Auto-marqué comme envoyé")
             return True
         return False
     except Exception as e:
