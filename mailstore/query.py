@@ -32,16 +32,18 @@ def list_emails(project_code: str = None, sender: str = None,
 
     where = " AND ".join(conditions) if conditions else "1=1"
 
+    # Light fields only for list (no body_text/body_html — saves ~2MB per 50 emails)
+    fields = "hash, msg_id, date_time, sender, sender_name, recipients, cc, subject, snippet, size, has_attach, labels, thread_id, project_code, stored_path"
     if search:
         rows = conn.execute(f"""
-            SELECT e.* FROM emails e
+            SELECT e.{fields} FROM emails e
             JOIN fts_emails f ON e.rowid = f.rowid
             WHERE fts_emails MATCH ? AND {where}
             ORDER BY e.date_time DESC LIMIT ? OFFSET ?
         """, (search, *params, limit, offset)).fetchall()
     else:
         rows = conn.execute(f"""
-            SELECT * FROM emails e WHERE {where}
+            SELECT {fields} FROM emails e WHERE {where}
             ORDER BY date_time DESC LIMIT ? OFFSET ?
         """, (*params, limit, offset)).fetchall()
 
