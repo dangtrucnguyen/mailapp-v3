@@ -7,7 +7,7 @@ edition = "2021"
 rust-version = "1.70"
 
 [lib]
-name = "mailapp_lib"
+name = "app_lib"
 crate-type = ["lib", "cdylib", "staticlib"]
 
 [build-dependencies]
