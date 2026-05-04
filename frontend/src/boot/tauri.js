@@ -11,10 +11,10 @@ export default boot(({ app }) => {
         localStorage.setItem('mailapp_api_url', apiUrl)
       })
     }).catch(() => {
-      app.config.globalProperties.$apiBaseUrl = 'https://op13.scigroup.fr'
+      app.config.globalProperties.$apiBaseUrl = 'http://192.168.1.242:6000'
     })
   } else {
     const stored = localStorage.getItem('mailapp_api_url')
-    app.config.globalProperties.$apiBaseUrl = stored || 'https://op13.scigroup.fr'
+    app.config.globalProperties.$apiBaseUrl = stored || 'http://192.168.1.242:6000'
   }
 })

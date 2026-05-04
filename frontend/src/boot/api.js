@@ -6,7 +6,7 @@ const isTauri = !!(window.__TAURI_INTERNALS__)
 
 // API base URL: relative for SPA (proxied), absolute for Tauri
 const baseURL = isTauri
-  ? (localStorage.getItem('mailapp_api_url') || 'https://op13.scigroup.fr') + '/api'
+  ? (localStorage.getItem('mailapp_api_url') || 'http://192.168.1.242:6000') + '/api'
   : '/api'
 
 const api = axios.create({

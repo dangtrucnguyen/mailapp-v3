@@ -6,9 +6,10 @@ use tauri::{
 
 #[tauri::command]
 fn get_api_url() -> String {
-    // Production server URL — override with env var for dev
+    // Default: local server. Override with MAILAPP_API_URL env var.
+    // Set MAILAPP_API_URL=https://op13.scigroup.fr for production HTTPS
     std::env::var("MAILAPP_API_URL")
-        .unwrap_or_else(|_| "https://op13.scigroup.fr".to_string())
+        .unwrap_or_else(|_| "http://192.168.1.242:6000".to_string())
 }
 
 #[tauri::command]
