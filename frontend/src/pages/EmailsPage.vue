@@ -1,14 +1,30 @@
 <template>
   <div class="emails-split">
     <!-- Liste (toujours visible en desktop, plein écran si pas de sélection) -->
-    <div class="email-list-pane" :class="{ 'full-width': !selectedEmail }">
+    <div class="email-list-pane" :class="{ 'full-width': !selectedEmail }" :style="listPaneStyle">
       <div class="row items-center justify-between q-mb-sm q-px-sm">
         <div class="text-h6">Emails</div>
         <q-btn color="primary" icon="edit" label="Nouveau" size="sm" @click="$router.push('/compose')" />
       </div>
 
+      <!-- Search/filter bar -->
+      <div class="q-px-sm q-mb-sm">
+        <q-input
+          v-model="filter"
+          dense
+          outlined
+          placeholder="Filtrer les emails..."
+          debounce="150"
+          clearable
+        >
+          <template #prepend>
+            <q-icon name="search" size="xs" />
+          </template>
+        </q-input>
+      </div>
+
       <q-virtual-scroll
-        :items="emails"
+        :items="filteredEmails"
         v-slot="{ item: e, index }"
         class="email-scroll"
         style="height: calc(100vh - 120px)"
@@ -24,7 +40,7 @@
         >
           <q-item-section avatar>
             <q-icon
-              :name="selectedId === e.id ? 'email_open' : 'email'"
+              name="email"
               :color="e.project_code ? 'primary' : 'grey'"
               size="xs"
             />
@@ -45,6 +61,15 @@
           </q-item-section>
         </q-item>
       </q-virtual-scroll>
+    </div>
+
+    <!-- Resizable divider -->
+    <div
+      v-if="selectedEmail"
+      class="split-divider"
+      @mousedown.prevent="startResize"
+    >
+      <div class="divider-handle" />
     </div>
 
     <!-- Panneau détail (desktop, visible si sélectionné) -->
@@ -183,8 +208,18 @@ import api from '../boot/api'
 const route = useRoute()
 const router = useRouter()
 const emails = ref([])
+const filter = ref('')
+const filteredEmails = computed(() => {
+  const q = filter.value.toLowerCase()
+  if (!q) return emails.value
+  return emails.value.filter(e =>
+    (e.subject || '').toLowerCase().includes(q) ||
+    (e.sender || '').toLowerCase().includes(q) ||
+    (e.sender_name || '').toLowerCase().includes(q) ||
+    (e.snippet || '').toLowerCase().includes(q)
+  )
+})
 const selectedId = ref(null)
-const selectedEmail = ref(null)
 const detail = ref(null)
 const attachments = ref([])
 const loadingDetail = ref(false)
@@ -194,6 +229,13 @@ const confirmDelete = ref(false)
 const isArchived = ref(false)
 const attachmentsExpanded = ref(false)
 const emailBodyRef = ref(null)
+const listWidth = ref(38)
+const isResizing = ref(false)
+
+const listPaneStyle = computed(() => ({
+  width: selectedEmail.value ? listWidth.value + '%' : '100%',
+  minWidth: '220px',
+}))
 
 const visibleAttachments = computed(() => {
   if (attachments.value.length <= 5 || attachmentsExpanded.value) return attachments.value
@@ -232,6 +274,8 @@ async function selectEmail(e) {
 
 async function loadDetail(id) {
   loadingDetail.value = true
+  selectedEmail.value = emails.value.find(e => e.id === id) || selectedEmail.value
+
   try {
     const res = await api.get(`/emails/${id}`)
     detail.value = res.data.email || res.data
@@ -247,18 +291,19 @@ async function loadDetail(id) {
       } catch {}
     }
 
+    // Load project options (don't block rendering)
+    api.get('/projects').then(pr => {
+      projectOptions.value = (pr.data.projects || pr.data || []).map(p => ({ label: p.name || p.code, value: p.code }))
+    }).catch(() => {})
+
+    // Show detail NOW, then render shadow DOM
+    loadingDetail.value = false
     await nextTick()
     renderEmailBody()
-
-    // Load project options
-    try {
-      const pr = await api.get('/projects')
-      projectOptions.value = (pr.data.projects || pr.data || []).map(p => ({ label: p.name || p.code, value: p.code }))
-    } catch {}
   } catch {
     detail.value = null
+    loadingDetail.value = false
   }
-  loadingDetail.value = false
 }
 
 // Shadow DOM — same as EmailDetailPage
@@ -350,6 +395,35 @@ async function downloadOne(att) {
   } catch {}
 }
 
+// Resize
+function startResize(e) {
+  isResizing.value = true
+  const startX = e.clientX
+  const startWidth = listWidth.value
+
+  function onMove(ev) {
+    const containerWidth = document.querySelector('.emails-split')?.offsetWidth || window.innerWidth
+    const dx = ev.clientX - startX
+    const newPct = startWidth + (dx / containerWidth) * 100
+    if (newPct >= 20 && newPct <= 60) {
+      listWidth.value = Math.round(newPct)
+    }
+  }
+
+  function onUp() {
+    isResizing.value = false
+    document.removeEventListener('mousemove', onMove)
+    document.removeEventListener('mouseup', onUp)
+    document.body.style.cursor = ''
+    document.body.style.userSelect = ''
+  }
+
+  document.addEventListener('mousemove', onMove)
+  document.addEventListener('mouseup', onUp)
+  document.body.style.cursor = 'col-resize'
+  document.body.style.userSelect = 'none'
+}
+
 // Helpers
 function fmtDate(d) {
   if (!d) return ''
@@ -398,10 +472,10 @@ function attIcon(mime) {
 
 .email-list-pane {
   width: 38%;
-  min-width: 280px;
-  border-right: 1px solid #e0e0e0;
+  min-width: 220px;
+  border-right: none;
   overflow: hidden;
-  transition: width 0.2s;
+  transition: none;
 }
 .email-list-pane.full-width {
   width: 100%;
@@ -433,6 +507,30 @@ function attIcon(mime) {
 }
 .attachment-chip:hover {
   background: #f5f5f5;
+}
+
+.split-divider {
+  width: 6px;
+  cursor: col-resize;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  flex-shrink: 0;
+}
+.split-divider:hover,
+.split-divider:active {
+  background: #e0e0e0;
+}
+.divider-handle {
+  width: 2px;
+  height: 32px;
+  border-radius: 2px;
+  background: #ccc;
+  transition: background 0.15s;
+}
+.split-divider:hover .divider-handle {
+  background: #999;
 }
 
 /* Mobile: stack vertically */

@@ -43,7 +43,7 @@
         >
           <q-item clickable v-ripple to="/emails" exact dense class="q-pl-lg">
             <q-item-section avatar><q-icon name="inbox" size="xs" /></q-item-section>
-            <q-item-section class="text-caption">Boîte de réception</q-item-section>
+            <q-item-section class="text-caption">Réception</q-item-section>
           </q-item>
 
           <q-item clickable v-ripple to="/drafts" dense class="q-pl-lg">
