@@ -3,9 +3,11 @@
     <q-header elevated>
       <q-toolbar>
         <q-btn flat dense round icon="menu" @click="drawer = !drawer" class="lt-md" />
-        <q-toolbar-title @click="$router.push('/')" style="cursor:pointer">
+        <q-toolbar-title @click="$router.push('/')" style="cursor:pointer;flex:0 0 auto">
           📧 MailApp
         </q-toolbar-title>
+        <SearchBar />
+        <q-space />
         <q-btn flat dense round icon="logout" @click="doLogout" title="Déconnexion" />
       </q-toolbar>
     </q-header>
@@ -95,6 +97,7 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
+import SearchBar from '../components/SearchBar.vue'
 
 const auth = useAuthStore()
 const router = useRouter()

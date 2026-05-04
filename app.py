@@ -10,7 +10,7 @@ import os
 
 from config import APP_NAME, APP_HOST, APP_PORT
 from database import init_db
-from routes import auth, admin, projects, tasks, documents, emails, notifications
+from routes import auth, admin, projects, tasks, documents, emails, notifications, search
 
 templates = Jinja2Templates(directory='templates')
 
@@ -67,6 +67,7 @@ app.include_router(tasks.router)
 app.include_router(documents.router)
 app.include_router(emails.router)
 app.include_router(notifications.router)
+app.include_router(search.router)
 
 # ─── SPA service worker & manifest ───────────────────────────────────────────
 @app.get('/sw.js')
