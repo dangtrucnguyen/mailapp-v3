@@ -4,7 +4,7 @@
   "version": "3.0.0-beta.1",
   "identifier": "fr.scingenierie.mailapp",
   "build": {
-    "frontendDist": "../static/dist",
+    "frontendDist": "../../static/dist",
     "devUrl": "http://localhost:5173",
     "beforeDevCommand": "npm run dev",
     "beforeBuildCommand": "npm run build"
