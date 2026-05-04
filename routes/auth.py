@@ -39,6 +39,10 @@ async def get_current_user_api(request: Request):
     """Version pour API (ne redirige pas, renvoie None)"""
     token = request.cookies.get('mailapp_token')
     if not token:
+        auth_header = request.headers.get('Authorization', '')
+        if auth_header.startswith('Bearer '):
+            token = auth_header[7:]
+    if not token:
         return None
     payload = decode_access_token(token)
     if not payload:
