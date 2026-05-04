@@ -308,10 +308,20 @@ function renderEmailBody() {
   const el = emailBodyRef.value
   if (!el || !email.value?.body_html) return
 
-  // Remove malicious scripts
-  let html = email.value.body_html
+  let html = email.value.body_html || ''
+  if (!html.trim()) return
+
+  // Extract <style> blocks BEFORE removing scripts
+  const styleBlocks = []
+  html = html.replace(/<style[^>]*>([\s\S]*?)<\/style>/gi, (match, css) => {
+    styleBlocks.push(css)
+    return ''
+  })
+
+  // Remove malicious scripts and event handlers
+  html = html
     .replace(/<script[\s\S]*?<\/script>/gi, '')
-    .replace(/ on\w+="[^"]*"/gi, '')  // inline event handlers
+    .replace(/ on\w+="[^"]*"/gi, '')
 
   // Create or reuse shadow root
   let shadow = el.shadowRoot
@@ -319,21 +329,23 @@ function renderEmailBody() {
     shadow = el.attachShadow({ mode: 'open' })
   }
 
-  // Base reset styles inside shadow — prevent inherited page styles,
-  // but keep email's own styles working
+  // Build shadow content:
+  // 1. Full isolation reset (no inheritance from parent)
+  // 2. Email's own <style> blocks (scoped inside shadow, cannot leak)
+  // 3. Email body HTML
   shadow.innerHTML = `
     <style>
-      :host { display: block; }
-      /* Reset common inherited styles that leak from parent */
-      body, div, p, span, a, td, th, h1, h2, h3, h4, h5, h6, ul, ol, li, blockquote, pre, code, table, tr {
+      :host {
+        all: initial;
+        display: block;
         font-family: inherit;
+        font-size: inherit;
+        color: inherit;
         line-height: inherit;
       }
-      img { max-width: 100%; height: auto; }
-      a { color: #1976d2; }
-      /* Neutralize aggressive resets from email HTML */
-      * { box-sizing: border-box; }
+      :host img { max-width: 100% !important; height: auto !important; }
     </style>
+    ${styleBlocks.map(css => `<style>${css}</style>`).join('\n')}
     ${html}
   `
 }
