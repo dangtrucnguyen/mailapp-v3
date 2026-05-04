@@ -5,7 +5,7 @@
       <q-item v-for="s in sent" :key="s.id">
         <q-item-section>
           <q-item-label>{{ s.subject }}</q-item-label>
-          <q-item-label caption>{{ s.to_email }} · {{ s.sent_at?.substring(0, 16) }}</q-item-label>
+          <q-item-label caption>{{ s.recipients || s.sender }} · {{ s.date_time?.substring(0, 16) }}</q-item-label>
         </q-item-section>
       </q-item>
     </q-list>
@@ -18,6 +18,15 @@
 <script setup>
 import { ref, onMounted } from 'vue'
 import api from '../boot/api'
-onMounted(async () => { try { sent.value = (await api.get('/emails/sent/list')).data.sent_emails || [] } catch {} })
+
 const sent = ref([])
+
+onMounted(async () => {
+  try {
+    const res = await api.get('/emails', { params: { mailbox: 'sent', limit: 100 } })
+    sent.value = res.data.emails || []
+  } catch (e) {
+    console.error('SentPage:', e)
+  }
+})
 </script>

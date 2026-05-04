@@ -5,7 +5,7 @@
       <q-item v-for="d in drafts" :key="d.id" clickable @click="$router.push(`/compose?draft=${d.id}`)">
         <q-item-section>
           <q-item-label>{{ d.subject || '(sans sujet)' }}</q-item-label>
-          <q-item-label caption>{{ d.to_email || 'pas de destinataire' }} · {{ d.updated_at?.substring(0, 16) }}</q-item-label>
+          <q-item-label caption>{{ d.recipients || 'pas de destinataire' }} · {{ d.date_time?.substring(0, 16) }}</q-item-label>
         </q-item-section>
         <q-item-section side>
           <q-btn flat round icon="delete" @click.stop="deleteDraft(d.id)" size="sm" color="negative" />
@@ -27,7 +27,12 @@ const $q = useQuasar()
 const drafts = ref([])
 
 onMounted(async () => {
-  try { drafts.value = (await api.get('/emails/drafts/list')).data.drafts || [] } catch {}
+  try {
+    const res = await api.get('/emails', { params: { mailbox: 'drafts', limit: 100 } })
+    drafts.value = res.data.emails || []
+  } catch (e) {
+    console.error('DraftsPage:', e)
+  }
 })
 
 async function deleteDraft(id) {
