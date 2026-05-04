@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block title %}Dashboard — MailApp V3{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1>Dashboard</h1>
+    <span style="color:var(--text-muted);font-size:14px">Bienvenue, {{ user.display_name or user.username }}</span>
+</div>
+
+<div class="stats-grid">
+    <div class="stat-card">
+        <div class="stat-value">{{ project_count }}</div>
+        <div class="stat-label">{% if user.role == 'admin' %}Projets total{% else %}Mes projets{% endif %}</div>
+    </div>
+    {% if user.role == 'admin' %}
+    <div class="stat-card">
+        <div class="stat-value">{{ user_count }}</div>
+        <div class="stat-label">Utilisateurs</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">{{ pending_invitations }}</div>
+        <div class="stat-label">Invitations en attente</div>
+    </div>
+    {% endif %}
+    <div class="stat-card">
+        <div class="stat-value">{{ member_count or project_count }}</div>
+        <div class="stat-label">Participations</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">{{ email_count or 0 }}</div>
+        <div class="stat-label">Emails synchronises</div>
+    </div>
+    <div class="stat-card">
+        <div class="stat-value">{{ task_count or 0 }}</div>
+        <div class="stat-label">Taches</div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-header">Demarrage rapide</div>
+    <div style="display:flex;gap:12px;flex-wrap:wrap">
+        <a href="/projects" class="btn btn-primary">
+            📁 Mes projets
+        </a>
+        {% if user.role == 'admin' %}
+        <a href="/admin/users" class="btn btn-outline">
+            👥 Gerer les utilisateurs
+        </a>
+        <a href="/admin/invitations" class="btn btn-outline">
+            ✉️ Inviter un collaborateur
+        </a>
+        {% endif %}
+    </div>
+</div>
+
+{% if user.role == 'admin' %}
+<div class="card">
+    <div class="card-header">⚙️ Phase 1 — Statut</div>
+    <table class="table">
+        <tr><td>✅ Authentification JWT</td><td>Login / Register / Logout</td></tr>
+        <tr><td>✅ Roles globaux</td><td>Admin / Manager / Utilisateur</td></tr>
+        <tr><td>✅ Invitations</td><td>Token unique, expiration 7 jours, lien par email</td></tr>
+        <tr><td>✅ Gestion utilisateurs</td><td>Activer/desactiver, changer role</td></tr>
+        <tr><td>✅ Projets + membres</td><td>CRUD projets, roles par projet (chef/collab/lecteur)</td></tr>
+        <tr><td>✅ Middleware permissions</td><td>Verification globale + par projet</td></tr>
+    </table>
+</div>
+{% endif %}
+{% endblock %}

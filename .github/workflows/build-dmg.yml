@@ -1,0 +1,59 @@
+name: Build macOS DMG (Universal)
+
+on:
+  push:
+    branches: [main, master]
+  workflow_dispatch:
+
+jobs:
+  build-universal:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: "npm"
+          cache-dependency-path: frontend/package-lock.json
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin,x86_64-apple-darwin
+
+      - name: Install frontend deps
+        run: cd frontend && npm ci
+
+      # Build ARM64
+      - name: Build Tauri (ARM64)
+        run: cd frontend && npx tauri build --target aarch64-apple-darwin --ci
+
+      # Build x86_64
+      - name: Build Tauri (x86_64)
+        run: cd frontend && npx tauri build --target x86_64-apple-darwin --ci
+
+      # Create Universal Binary via lipo
+      - name: Create Universal Binary
+        run: |
+          ARM_BIN="frontend/src-tauri/target/aarch64-apple-darwin/release/bundle/macos/MailApp.app/Contents/MacOS/MailApp"
+          INTEL_BIN="frontend/src-tauri/target/x86_64-apple-darwin/release/bundle/macos/MailApp.app/Contents/MacOS/MailApp"
+          lipo -create "$ARM_BIN" "$INTEL_BIN" -output /tmp/mailapp-universal
+          # Copy ARM .app and replace binary with universal
+          cp -R "frontend/src-tauri/target/aarch64-apple-darwin/release/bundle/macos/MailApp.app" /tmp/
+          cp /tmp/mailapp-universal "/tmp/MailApp.app/Contents/MacOS/MailApp"
+          chmod +x "/tmp/MailApp.app/Contents/MacOS/MailApp"
+
+      # Create DMG
+      - name: Create DMG
+        run: |
+          mkdir -p /tmp/dmg
+          cp -R /tmp/MailApp.app /tmp/dmg/
+          ln -s /Applications /tmp/dmg/Applications
+          hdiutil create -volname "MailApp" -srcfolder /tmp/dmg -ov -format UDZO \
+            /tmp/MailApp_3.0.0-beta.1_universal.dmg
+
+      - name: Upload DMG
+        uses: actions/upload-artifact@v4
+        with:
+          name: MailApp-macOS-Universal
+          path: /tmp/MailApp_3.0.0-beta.1_universal.dmg

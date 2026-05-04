@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+{% block title %}Inscription — MailApp V3{% endblock %}
+{% block extra_head %}
+<style>
+    .register-wrapper {
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(135deg, #eff6ff, #f8fafc);
+        padding: 20px;
+    }
+    .register-card {
+        background: var(--surface);
+        border-radius: 16px;
+        box-shadow: 0 4px 24px rgba(0,0,0,.08);
+        padding: 40px;
+        width: 100%;
+        max-width: 440px;
+        border: 1px solid var(--border);
+    }
+    .register-logo {
+        text-align: center;
+        margin-bottom: 32px;
+    }
+    .register-logo h1 { font-size: 28px; font-weight: 700; color: var(--primary); }
+    .register-logo p { color: var(--text-muted); font-size: 14px; margin-top: 4px; }
+    .btn-block { width: 100%; justify-content: center; padding: 12px; }
+    .register-footer {
+        text-align: center;
+        margin-top: 20px;
+        font-size: 14px;
+        color: var(--text-muted);
+    }
+    .register-footer a { color: var(--primary); text-decoration: none; font-weight: 500; }
+</style>
+{% endblock %}
+{% block content %}
+<div class="register-wrapper">
+    <div class="register-card">
+        <div class="register-logo">
+            <h1>📧 MailApp V3</h1>
+            {% if invitation_email %}
+            <p><strong>{{ invitation_email }}</strong> — Vous avez ete invite a rejoindre la plateforme</p>
+            {% else %}
+            <p>Creer votre compte</p>
+            {% endif %}
+        </div>
+
+        {% if error %}
+        <div class="alert alert-error">{{ error }}</div>
+        {% endif %}
+
+        <form method="POST" id="register-form">
+            <div class="form-group">
+                <label>Nom d'utilisateur</label>
+                <input type="text" name="username" class="form-control" placeholder="prenom.nom" required minlength="3" autofocus>
+            </div>
+            <div class="form-group">
+                <label>Nom affiche</label>
+                <input type="text" name="display_name" class="form-control" placeholder="Prenom Nom">
+            </div>
+            <div class="form-group">
+                <label>Email</label>
+                {% if invitation_email %}
+                <input type="email" name="email" class="form-control" value="{{ invitation_email }}" readonly style="background:#f3f4f6;color:#6b7280;">
+                {% else %}
+                <input type="email" name="email" class="form-control" placeholder="vous@exemple.fr" required>
+                {% endif %}
+            </div>
+            <div class="form-group">
+                <label>Mot de passe</label>
+                <input type="password" name="password" class="form-control" placeholder="8 caracteres minimum" required minlength="8">
+            </div>
+            <button type="submit" class="btn btn-primary btn-block">
+                {% if invitation_token %}
+                Accepter l'invitation
+                {% else %}
+                Creer mon compte
+                {% endif %}
+            </button>
+        </form>
+
+        <div class="register-footer">
+            Deja un compte ? <a href="/login">Se connecter</a>
+        </div>
+    </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+const form = document.getElementById('register-form');
+const isInvitation = {{ 'true' if invitation_token else 'false' }};
+
+form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const data = new FormData(form);
+    let body = Object.fromEntries(data);
+
+    {% if invitation_token %}
+    body.token = '{{ invitation_token }}';
+    const url = '/api/auth/register-with-invitation';
+    {% else %}
+    const url = '/api/auth/register';
+    {% endif %}
+
+    try {
+        const res = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
+        });
+        if (res.ok) {
+            window.location = '/dashboard';
+        } else {
+            const err = await res.json();
+            const alert = document.createElement('div');
+            alert.className = 'alert alert-error';
+            alert.textContent = err.detail || 'Erreur d\'inscription';
+            form.insertBefore(alert, form.firstChild);
+        }
+    } catch {
+        const alert = document.createElement('div');
+        alert.className = 'alert alert-error';
+        alert.textContent = 'Erreur reseau';
+        form.insertBefore(alert, form.firstChild);
+    }
+});
+</script>
+{% endblock %}

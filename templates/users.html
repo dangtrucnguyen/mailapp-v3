@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+{% block title %}Utilisateurs — MailApp V3{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1>👥 Gestion des utilisateurs</h1>
+    <a href="/admin/invitations" class="btn btn-primary">✉️ Inviter un collaborateur</a>
+</div>
+
+{% if request.query_params.get('ok') == '1' %}
+<div class="alert alert-success">Utilisateur active/desactive avec succes.</div>
+{% endif %}
+{% if request.query_params.get('ok') == '2' %}
+<div class="alert alert-success">Role mis a jour avec succes.</div>
+{% endif %}
+
+<!-- Utilisateurs actifs -->
+<div class="card">
+    <div class="card-header">Utilisateurs ({{ users | length }})</div>
+    <table class="table">
+        <thead>
+            <tr>
+                <th>Utilisateur</th>
+                <th>Email</th>
+                <th>Role</th>
+                <th>Derniere connexion</th>
+                <th>Statut</th>
+                <th>Actions</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for u in users %}
+            <tr>
+                <td>
+                    <strong>{{ u.display_name or u.username }}</strong>
+                    {% if u.id == user.id %}<span style="font-size:11px;color:var(--text-muted)">(vous)</span>{% endif %}
+                </td>
+                <td>{{ u.email }}</td>
+                <td><span class="badge badge-{{ u.role }}">{{ u.role }}</span></td>
+                <td style="color:var(--text-muted);font-size:13px">
+                    {{ u.last_login[:16] if u.last_login else 'Jamais' }}
+                </td>
+                <td>
+                    {% if u.is_active %}
+                    <span class="badge" style="background:#ecfdf5;color:#065f46">Actif</span>
+                    {% else %}
+                    <span class="badge" style="background:#fef2f2;color:#991b1b">Desactive</span>
+                    {% endif %}
+                </td>
+                <td>
+                    <div style="display:flex;gap:6px">
+                        {% if u.id != user.id %}
+                        <!-- Changer role -->
+                        <form method="POST" action="/admin/api/users/{{ u.id }}/role" style="display:inline">
+                            <select name="role" class="form-control btn-sm" onchange="this.form.submit()" style="width:auto;padding:4px 8px;font-size:12px">
+                                <option value="utilisateur" {% if u.role == 'utilisateur' %}selected{% endif %}>Utilisateur</option>
+                                <option value="manager" {% if u.role == 'manager' %}selected{% endif %}>Manager</option>
+                                <option value="admin" {% if u.role == 'admin' %}selected{% endif %}>Admin</option>
+                            </select>
+                        </form>
+                        <!-- Activer/desactiver -->
+                        <form method="POST" action="/admin/api/users/{{ u.id }}/toggle" style="display:inline">
+                            <button type="submit" class="btn btn-sm {% if u.is_active %}btn-outline{% else %}btn-primary{% endif %}">
+                                {{ 'Desactiver' if u.is_active else 'Re-activer' }}
+                            </button>
+                        </form>
+                        {% endif %}
+                    </div>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- Invitations en attente -->
+{% if pending_invitations %}
+<div class="card">
+    <div class="card-header">Invitations en attente ({{ pending_invitations | length }})</div>
+    <table class="table">
+        <thead>
+            <tr><th>Email</th><th>Role propose</th><th>Envoyee le</th><th>Expire</th></tr>
+        </thead>
+        <tbody>
+            {% for inv in pending_invitations %}
+            <tr>
+                <td>{{ inv.email }}</td>
+                <td><span class="badge badge-{{ inv.role }}">{{ inv.role }}</span></td>
+                <td>{{ inv.created_at[:16] }}</td>
+                <td>{{ inv.expires_at[:16] }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+{% endblock %}

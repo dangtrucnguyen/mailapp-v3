@@ -1,0 +1,64 @@
+{% extends "base.html" %}
+{% block title %}Webhooks — MailApp V3{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1>🔗 Webhooks</h1>
+</div>
+
+{% if request.query_params.get('ok') == '1' %}
+<div class="alert alert-success">Webhook créé.</div>
+{% elif request.query_params.get('ok') == '2' %}
+<div class="alert alert-success">Webhook supprimé.</div>
+{% endif %}
+
+<div class="card">
+    <div class="card-header">Créer un webhook</div>
+    <form method="POST" action="/notifications/webhooks/api/create" style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap">
+        <div class="form-group" style="flex:1;min-width:200px;margin-bottom:0">
+            <label>URL cible *</label>
+            <input type="url" name="url" class="form-control" placeholder="https://..." required>
+        </div>
+        <div class="form-group" style="margin-bottom:0">
+            <label>Projet</label>
+            <select name="project_code" class="form-control" style="width:auto">
+                <option value="">— Tous —</option>
+                {% for p in projects %}
+                <option value="{{ p.code }}">{{ p.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="form-group" style="margin-bottom:0">
+            <label>Événements</label>
+            <input type="text" name="events" class="form-control" value="task.created,task.updated,document.uploaded"
+                   style="min-width:250px">
+        </div>
+        <button type="submit" class="btn btn-primary" style="margin-bottom:0">Créer</button>
+    </form>
+</div>
+
+{% if webhooks %}
+<div class="card" style="padding:0">
+    <table class="table" style="margin:0">
+        <thead>
+            <tr><th>URL</th><th>Projet</th><th>Événements</th><th>Secret</th><th>Actions</th></tr>
+        </thead>
+        <tbody>
+            {% for w in webhooks %}
+            <tr>
+                <td style="font-size:12px;word-break:break-all">{{ w.url[:60] }}</td>
+                <td>{{ w.project_code or 'Tous' }}</td>
+                <td><span style="font-size:11px">{{ w.events }}</span></td>
+                <td><code style="font-size:10px">{{ w.secret[:12] }}...</code></td>
+                <td>
+                    <form method="POST" action="/notifications/webhooks/api/{{ w.id }}/delete" style="display:inline"
+                          onsubmit="return confirm('Supprimer ce webhook ?')">
+                        <button class="btn btn-sm btn-danger">🗑️</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endif %}
+{% endblock %}

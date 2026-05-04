@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% block title %}Projets — MailApp V3{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1>📁 {% if user.role == 'admin' %}Tous les projets{% else %}Mes projets{% endif %}</h1>
+    <button class="btn btn-primary" onclick="toggleCreateForm()">+ Nouveau projet</button>
+</div>
+
+{% if request.query_params.get('error') == 'access_denied' %}
+<div class="alert alert-error">Acces refuse : vous n'etes pas membre de ce projet.</div>
+{% endif %}
+
+<!-- Formulaire creation (caché par défaut) -->
+<div id="create-form" class="card" style="display:none">
+    <div class="card-header">Nouveau projet</div>
+    <form method="POST" action="/projects/api/create" style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap">
+        <div class="form-group" style="flex:1;min-width:150px;margin-bottom:0">
+            <label>Code projet</label>
+            <input type="text" name="code" class="form-control" placeholder="24-016-A" required
+                   pattern="[A-Za-z0-9\-]+" title="Lettres, chiffres et tirets">
+        </div>
+        <div class="form-group" style="flex:2;min-width:200px;margin-bottom:0">
+            <label>Nom du projet</label>
+            <input type="text" name="name" class="form-control" placeholder="Nom du projet" required>
+        </div>
+        <div class="form-group" style="flex:2;min-width:200px;margin-bottom:0">
+            <label>Description</label>
+            <input type="text" name="description" class="form-control" placeholder="Description courte">
+        </div>
+        <button type="submit" class="btn btn-primary" style="margin-bottom:0">Creer</button>
+    </form>
+</div>
+
+<!-- Liste des projets -->
+{% if projects %}
+<div class="card">
+    <table class="table">
+        <thead>
+            <tr><th>Code</th><th>Projet</th><th>Description</th><th>Membres</th><th>Statut</th></tr>
+        </thead>
+        <tbody>
+            {% for p in projects %}
+            <tr>
+                <td><strong style="color:var(--primary)">{{ p.code }}</strong></td>
+                <td><a href="/projects/{{ p.code }}" style="text-decoration:none;color:var(--text);font-weight:500">{{ p.name }}</a></td>
+                <td style="color:var(--text-muted)">{{ p.description or '-' }}</td>
+                <td>{{ p.member_count }} membre(s)</td>
+                <td><span class="badge" style="background:#ecfdf5;color:#065f46">{{ p.status }}</span></td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<div class="card" style="text-align:center;padding:40px">
+    <p style="font-size:18px;color:var(--text-muted);margin-bottom:12px">📁 Aucun projet pour le moment</p>
+    <button class="btn btn-primary" onclick="toggleCreateForm()">+ Creer mon premier projet</button>
+</div>
+{% endif %}
+{% endblock %}
+{% block scripts %}
+<script>
+function toggleCreateForm() {
+    const form = document.getElementById('create-form');
+    form.style.display = form.style.display === 'none' ? 'block' : 'none';
+    if (form.style.display === 'block') {
+        form.querySelector('input[name="code"]').focus();
+    }
+}
+</script>
+{% endblock %}

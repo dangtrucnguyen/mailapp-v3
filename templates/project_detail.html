@@ -1,0 +1,228 @@
+{% extends "base.html" %}
+{% block title %}{{ project.code }} — MailApp V3{% endblock %}
+{% block extra_head %}
+<style>
+.project-tabs { display: flex; gap: 4px; margin-bottom: 20px; border-bottom: 2px solid var(--border); padding-bottom: 0; flex-wrap: wrap; }
+.project-tab { display: inline-flex; align-items: center; gap: 5px; padding: 8px 16px; border-radius: 8px 8px 0 0; font-size: 14px; font-weight: 500; text-decoration: none; color: var(--text-muted); background: transparent; border: none; cursor: pointer; transition: all .15s; }
+.project-tab:hover { background: var(--bg); color: var(--text); }
+.project-tab.active { color: var(--primary); border-bottom: 2px solid var(--primary); margin-bottom: -2px; font-weight: 600; }
+@media (max-width: 768px) { .project-tab { padding: 6px 10px; font-size: 13px; } }
+</style>
+{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <a href="/projects" style="color:var(--text-muted);text-decoration:none;font-size:13px">← Projets</a>
+        <h1 style="margin-top:4px">{{ project.name }}</h1>
+        <span style="color:var(--text-muted);font-size:13px">{{ project.code }} · {{ project.status }}</span>
+    </div>
+</div>
+
+{% if request.query_params.get('ok') == '1' %}
+<div class="alert alert-success">Membre ajouté avec succès.</div>
+{% elif request.query_params.get('ok') == '2' %}
+<div class="alert alert-success">Rôle du membre mis à jour.</div>
+{% elif request.query_params.get('ok') == '3' %}
+<div class="alert alert-success">Membre retiré du projet.</div>
+{% elif request.query_params.get('error') == 'already_member' %}
+<div class="alert alert-warning">Cet utilisateur est déjà membre du projet.</div>
+{% elif request.query_params.get('error') == 'not_authorized' %}
+<div class="alert alert-error">Vous n'avez pas les droits nécessaires.</div>
+{% endif %}
+
+<!-- Onglets -->
+{% set tab = request.query_params.get('tab', 'team') %}
+<div class="project-tabs">
+    <a href="?tab=team" class="project-tab {% if tab == 'team' %}active{% endif %}">👥 Équipe</a>
+    <a href="?tab=tasks" class="project-tab {% if tab == 'tasks' %}active{% endif %}">📋 Tâches</a>
+    <a href="?tab=emails" class="project-tab {% if tab == 'emails' %}active{% endif %}">📧 Emails</a>
+    <a href="?tab=docs" class="project-tab {% if tab == 'docs' %}active{% endif %}">📄 Documents</a>
+</div>
+
+<!-- Onglet: Équipe -->
+{% if tab == 'team' %}
+<div class="card">
+    <div class="card-header">Membres de l'équipe ({{ members | length }})</div>
+    {% if members %}
+    <table class="table">
+        <thead>
+            <tr><th>Membre</th><th>Email</th><th>Rôle projet</th><th>Permissions</th><th>Actions</th></tr>
+        </thead>
+        <tbody>
+            {% for m in members %}
+            <tr>
+                <td><strong>{{ m.display_name or m.username }}</strong>
+                    {% if m.user_id == user.id %}<span style="font-size:11px;color:var(--text-muted)">(vous)</span>{% endif %}
+                </td>
+                <td>{{ m.email }}</td>
+                <td><span class="badge badge-{{ m.role }}">{{ m.role }}</span></td>
+                <td>
+                    <div style="display:flex;gap:4px;flex-wrap:wrap;font-size:11px">
+                        {% if m.can_create_tasks %}✅ Tâches{% endif %}
+                        {% if m.can_upload_docs %}✅ Docs{% endif %}
+                        {% if m.can_manage_members %}✅ Gérer{% endif %}
+                    </div>
+                </td>
+                <td>
+                    {% if (current_membership and current_membership.can_manage_members) or user.role == 'admin' %}
+                    {% if m.user_id != user.id %}
+                    <div style="display:flex;gap:6px">
+                        <form method="POST" action="/projects/{{ project.code }}/members/{{ m.user_id }}/update" style="display:inline">
+                            <select name="role" class="form-control btn-sm" onchange="this.form.submit()" style="width:auto;padding:4px 8px;font-size:12px">
+                                <option value="chef" {% if m.role == 'chef' %}selected{% endif %}>Chef</option>
+                                <option value="collaborateur" {% if m.role == 'collaborateur' %}selected{% endif %}>Collaborateur</option>
+                                <option value="lecteur" {% if m.role == 'lecteur' %}selected{% endif %}>Lecteur</option>
+                            </select>
+                        </form>
+                        <form method="POST" action="/projects/{{ project.code }}/members/{{ m.user_id }}/remove" style="display:inline"
+                              onsubmit="return confirm('Retirer {{ m.username }} du projet ?')">
+                            <button class="btn btn-sm btn-danger">Retirer</button>
+                        </form>
+                    </div>
+                    {% endif %}
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% endif %}
+
+    {% if (current_membership and current_membership.can_manage_members) or user.role == 'admin' %}
+    <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border)">
+        <form method="POST" action="/projects/{{ project.code }}/members/add" style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap">
+            <div class="form-group" style="flex:1;min-width:200px;margin-bottom:0">
+                <label>Ajouter un utilisateur</label>
+                <select name="user_id" class="form-control" required>
+                    <option value="">— Sélectionner —</option>
+                    {% for u in all_users %}
+                    {% set already = members | selectattr('user_id', 'equalto', u.id) | list %}
+                    {% if not already %}
+                    <option value="{{ u.id }}">{{ u.display_name or u.username }} ({{ u.email }})</option>
+                    {% endif %}
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="form-group" style="margin-bottom:0">
+                <label>Rôle</label>
+                <select name="role" class="form-control" style="width:auto">
+                    <option value="lecteur">Lecteur</option>
+                    <option value="collaborateur" selected>Collaborateur</option>
+                    <option value="chef">Chef de projet</option>
+                </select>
+            </div>
+            <button type="submit" class="btn btn-primary" style="margin-bottom:0">Ajouter</button>
+        </form>
+    </div>
+    {% endif %}
+</div>
+{% endif %}
+
+<!-- Onglet: Tâches -->
+{% if tab == 'tasks' %}
+<div class="page-header" style="margin-bottom:12px">
+    <h2 style="font-size:18px">Tâches du projet</h2>
+    <a href="/tasks" class="btn btn-outline btn-sm">Voir toutes les tâches</a>
+</div>
+<div class="card">
+    {% set project_tasks = project_tasks %}
+    {% if project_tasks %}
+    <table class="table">
+        <thead>
+            <tr><th>Code</th><th>Titre</th><th>Statut</th><th>Priorité</th><th>Assigné</th></tr>
+        </thead>
+        <tbody>
+            {% for t in project_tasks %}
+            <tr>
+                <td style="color:var(--primary);font-weight:600;font-size:12px">{{ t.code }}</td>
+                <td>{{ t.title }}</td>
+                <td><span class="badge">{{ t.status }}</span></td>
+                <td><span class="badge {% if t.priority == 'Haute' or t.priority == 'Urgente' %}" style="background:#fef2f2;color:#991b1b"{% else %}" style="background:#f3f4f6"{% endif %}>{{ t.priority }}</span></td>
+                <td style="font-size:13px">{{ t.assignee_name or '—' }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p style="color:var(--text-muted);padding:20px;text-align:center">Aucune tâche dans ce projet. <a href="/tasks">Créer une tâche</a></p>
+    {% endif %}
+</div>
+{% endif %}
+
+<!-- Onglet: Emails -->
+{% if tab == 'emails' %}
+<div class="card" style="padding:0">
+    {% set project_emails = project_emails %}
+    {% if project_emails %}
+    <table class="table" style="margin:0">
+        <thead>
+            <tr><th>Date</th><th>Expéditeur</th><th>Sujet</th></tr>
+        </thead>
+        <tbody>
+            {% for e in project_emails %}
+            <tr>
+                <td style="white-space:nowrap;font-size:12px;color:var(--text-muted)">{{ e.date_time[:16] }}</td>
+                <td style="font-size:13px">{{ e.sender[:40] }}</td>
+                <td><a href="/emails/{{ e.id }}" style="color:var(--text);text-decoration:none">{{ e.subject[:80] }}</a></td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p style="color:var(--text-muted);padding:20px;text-align:center">Aucun email lié à ce projet.</p>
+    {% endif %}
+</div>
+{% endif %}
+
+<!-- Onglet: Documents -->
+{% if tab == 'docs' %}
+<div class="page-header" style="margin-bottom:12px">
+    <h2 style="font-size:18px">Documents du projet</h2>
+</div>
+<div class="card">
+    {% set project_docs = project_docs %}
+    {% if project_docs %}
+    <table class="table">
+        <thead>
+            <tr><th>Fichier</th><th>Version</th><th>Auteur</th><th>Date</th><th>Statut</th><th>Action</th></tr>
+        </thead>
+        <tbody>
+            {% for d in project_docs %}
+            <tr>
+                <td><strong>{{ d.filename }}</strong>
+                    {% if d.description %}<br><span style="font-size:11px;color:var(--text-muted)">{{ d.description }}</span>{% endif %}
+                </td>
+                <td>v{{ d.version }}</td>
+                <td style="font-size:13px">{{ d.author_name or '—' }}</td>
+                <td style="font-size:12px;color:var(--text-muted)">{{ d.created_at[:16] }}</td>
+                <td><span class="badge" style="background:#ecfdf5;color:#065f46">{{ d.status }}</span></td>
+                <td>
+                    <a href="/documents/file/{{ d.id }}" class="btn btn-sm btn-outline" download>Télécharger</a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p style="color:var(--text-muted);padding:20px;text-align:center">Aucun document dans ce projet.</p>
+    {% endif %}
+
+    <!-- Upload -->
+    <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border)">
+        <form method="POST" action="/documents/api/upload" enctype="multipart/form-data"
+              style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap">
+            <input type="hidden" name="project_code" value="{{ project.code }}">
+            <div class="form-group" style="margin-bottom:0">
+                <label>Ajouter un document</label>
+                <input type="file" name="file" class="form-control" style="font-size:13px;padding:6px" required>
+            </div>
+            <div class="form-group" style="margin-bottom:0">
+                <label>Description</label>
+                <input type="text" name="description" class="form-control" placeholder="Description courte" style="font-size:13px">
+            </div>
+            <button type="submit" class="btn btn-primary" style="margin-bottom:0">Uploader</button>
+        </form>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

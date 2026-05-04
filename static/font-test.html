@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Font Test</title>
+<link rel="stylesheet" href="/css/material-icons.css">
+<style>
+body { font-family: Roboto, sans-serif; padding: 20px; background: #f5f5f5; }
+.test { font-size: 24px; margin: 10px 0; padding: 8px; background: white; border-radius: 8px; }
+.material-icons-outlined { font-size: 28px; vertical-align: middle; margin-right: 8px; }
+.success { color: green; }
+.fail { color: red; }
+</style>
+</head>
+<body>
+<h2>Material Icons Font Test (static local)</h2>
+<p>Si les icônes s'affichent, le problème est ailleurs (SPA/PWA/Quasar).<br>
+Si du texte brut s'affiche, la police ne se charge pas.</p>
+
+<div class="test"><i class="material-icons-outlined">dashboard</i> dashboard — <span id="r1">testing...</span></div>
+<div class="test"><i class="material-icons-outlined">folder</i> folder — <span id="r2">testing...</span></div>
+<div class="test"><i class="material-icons-outlined">email</i> email — <span id="r3">testing...</span></div>
+<div class="test"><i class="material-icons-outlined">logout</i> logout — <span id="r4">testing...</span></div>
+<div class="test"><i class="material-icons-outlined">assignment</i> assignment — <span id="r5">testing...</span></div>
+
+<script>
+setTimeout(() => {
+  document.querySelectorAll('.material-icons-outlined').forEach(el => {
+    const span = el.nextElementSibling;
+    const computed = getComputedStyle(el);
+    const fontFamily = computed.fontFamily;
+    const isIcon = fontFamily.includes('Material Icons');
+    span.textContent = isIcon ? '✅ FONT LOADED' : '❌ Font not applied';
+    span.className = isIcon ? 'success' : 'fail';
+  });
+}, 2000);
+document.fonts.ready.then(() => {
+  document.querySelectorAll('.material-icons-outlined').forEach(el => {
+    const span = el.nextElementSibling.nextElementSibling;
+    if (span) span.textContent += ' (fonts.ready)';
+  });
+});
+</script>
+</body>
+</html>

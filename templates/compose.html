@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+{% block title %}
+{% if reply_to %}Répondre{% elif forward %}Transférer{% else %}Nouveau message{% endif %} — MailApp V3
+{% endblock %}
+{% block extra_head %}
+<style>
+.compose-container {
+    max-width: 800px;
+    margin: 0 auto;
+}
+.compose-header {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 16px;
+}
+.compose-header h1 { font-size: 20px; }
+.form-row {
+    display: flex; gap: 8px; align-items: center; margin-bottom: 8px;
+}
+.form-row label {
+    width: 70px; text-align: right; font-size: 13px; color: var(--text-muted); flex-shrink: 0;
+}
+.form-row input, .form-row textarea {
+    flex: 1; padding: 8px 10px; border: 1px solid var(--border); border-radius: 6px;
+    font-size: 14px; font-family: inherit; background: var(--surface); color: var(--text);
+}
+.form-row textarea {
+    min-height: 300px; resize: vertical; line-height: 1.6;
+}
+.form-row input:focus, .form-row textarea:focus {
+    outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(59,130,246,.15);
+}
+.compose-actions {
+    display: flex; gap: 8px; justify-content: flex-end; margin-top: 12px; flex-wrap: wrap;
+}
+.original-info {
+    background: var(--bg); border-radius: var(--radius); padding: 12px;
+    font-size: 13px; color: var(--text-muted); margin-bottom: 16px;
+}
+@media (max-width: 768px) {
+    .form-row { flex-direction: column; align-items: stretch; gap: 4px; }
+    .form-row label { text-align: left; width: auto; }
+    .compose-actions { justify-content: stretch; }
+    .compose-actions button { flex: 1; }
+}
+</style>
+{% endblock %}
+{% block content %}
+<div class="compose-container">
+    <div class="compose-header">
+        <h1>
+            {% if reply_to %}↩️ Répondre
+            {% elif forward %}↗️ Transférer
+            {% elif draft_id %}✏️ Modifier le brouillon
+            {% else %}✉️ Nouveau message{% endif %}
+        </h1>
+        <a href="{% if reply_to or forward %}/emails/{{ reply_to or forward }}{% else %}/emails/{% endif %}" style="color:var(--text-muted);text-decoration:none">Annuler</a>
+    </div>
+
+    {% if original_email %}
+    <div class="original-info">
+        <strong>{% if reply_to %}Réponse à{% else %}Transfert de{% endif %} :</strong>
+        {{ original_email.subject }}<br>
+        <span style="font-size:12px">De: {{ original_email.sender }} · {{ original_email.date_time[:16] }}</span>
+    </div>
+    {% endif %}
+
+    <form method="POST" action="/emails/api/send" id="composeForm">
+        <input type="hidden" name="draft_id" value="{{ draft_id }}">
+        <input type="hidden" name="reply_to_message_id" value="{{ original_email.id if original_email else '' }}">
+        <input type="hidden" name="action" id="formAction" value="send">
+
+        <div class="form-row">
+            <label>À *</label>
+            <input type="text" name="to" value="{{ to }}" required autofocus placeholder="destinataire@exemple.fr">
+        </div>
+        <div class="form-row">
+            <label>CC</label>
+            <input type="text" name="cc" value="{{ cc or '' }}" placeholder="copie@exemple.fr">
+        </div>
+        <div class="form-row">
+            <label>Sujet *</label>
+            <input type="text" name="subject" value="{{ subject }}" required>
+        </div>
+        <div class="form-row">
+            <label></label>
+            <textarea name="body" placeholder="Écrivez votre message...">{{ body }}</textarea>
+        </div>
+
+        <div class="compose-actions">
+            <button type="button" class="btn btn-outline" onclick="saveDraft()">💾 Brouillon</button>
+            <button type="submit" class="btn btn-primary">📤 Envoyer</button>
+        </div>
+    </form>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+function saveDraft() {
+    document.getElementById('formAction').value = 'draft';
+    document.getElementById('composeForm').submit();
+}
+// Ctrl+Enter pour envoyer
+document.addEventListener('keydown', function(e) {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+        document.getElementById('composeForm').submit();
+    }
+});
+</script>
+{% endblock %}

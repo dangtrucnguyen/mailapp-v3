@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+{% block title %}{{ email.subject[:60] }} — MailApp V3{% endblock %}
+{% block content %}
+<div class="page-header">
+    <div>
+        <a href="/emails" style="color:var(--text-muted);text-decoration:none;font-size:13px">← Emails</a>
+        <h1 style="margin-top:4px;font-size:22px">{{ email.subject }}</h1>
+        <div style="color:var(--text-muted);font-size:13px;margin-top:4px">
+            De : <strong style="color:var(--text)">{{ email.sender }}</strong> ·
+            {{ email.date_time[:16] }}
+        </div>
+    </div>
+</div>
+
+{% if request.query_params.get('ok') == '1' %}
+<div class="alert alert-success">Email lié au projet avec succès.</div>
+{% elif request.query_params.get('ok') == '2' %}
+<div class="alert alert-success">Tâche créée depuis cet email.</div>
+{% endif %}
+
+<div style="display:grid;grid-template-columns:1fr 300px;gap:16px">
+
+<!-- Corps de l'email -->
+<div>
+    <div class="card">
+        <div class="card-header" style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px">
+            <span>📧 Contenu</span>
+            <div style="display:flex;gap:4px">
+                <a href="/emails/compose?reply_to={{ email.id }}" class="btn btn-sm btn-outline" title="Répondre">↩️</a>
+                <a href="/emails/compose?forward={{ email.id }}" class="btn btn-sm btn-outline" title="Transférer">↗️</a>
+            </div>
+        </div>
+        {% if email.body_text %}
+        <pre style="white-space:pre-wrap;font-family:inherit;font-size:14px;line-height:1.7">{{ email.body_text }}</pre>
+        {% elif email.body_html %}
+        <div style="max-height:600px;overflow-y:auto">{{ email.body_html | safe }}</div>
+        {% else %}
+        <p style="color:var(--text-muted)">Contenu non disponible.</p>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Panneau latéral : Liens -->
+<div>
+    <!-- Lier au projet -->
+    <div class="card">
+        <div class="card-header">🔗 Projet</div>
+        {% if email.project_code %}
+        <p style="font-size:13px">Projet lié : <strong>{{ email.project_code }}</strong></p>
+        {% else %}
+        <p style="font-size:13px;color:var(--text-muted)">Non lié à un projet</p>
+        {% endif %}
+        <form method="POST" action="/emails/api/{{ email.id }}/link-project" style="margin-top:8px">
+            <div style="display:flex;gap:6px">
+                <select name="project_code" class="form-control" style="font-size:12px">
+                    <option value="">— Aucun —</option>
+                    {% for p in projects %}
+                    <option value="{{ p.code }}" {% if email.project_code == p.code %}selected{% endif %}>{{ p.name }}</option>
+                    {% endfor %}
+                </select>
+                <button type="submit" class="btn btn-xs btn-primary">Lier</button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Tâches liées -->
+    <div class="card">
+        <div class="card-header">📋 Tâches liées</div>
+        {% if linked_tasks %}
+        <ul style="list-style:none;font-size:13px">
+            {% for t in linked_tasks %}
+            <li style="padding:4px 0;border-bottom:1px solid var(--border)">
+                <strong style="color:var(--primary)">{{ t.code }}</strong>
+                {{ t.title[:40] }}
+                <span class="badge badge-{{ t.status | replace(' ', '-') | lower }}" style="font-size:10px">{{ t.status }}</span>
+            </li>
+            {% endfor %}
+        </ul>
+        {% else %}
+        <p style="font-size:13px;color:var(--text-muted)">Aucune tâche liée</p>
+        {% endif %}
+
+        <!-- Créer une tâche depuis cet email -->
+        <form method="POST" action="/emails/api/{{ email.id }}/create-task" style="margin-top:12px;padding-top:12px;border-top:1px solid var(--border)">
+            <div class="form-group">
+                <label style="font-size:12px">Titre de la tâche</label>
+                <input type="text" name="title" class="form-control" style="font-size:12px"
+                       value="[Email] {{ email.subject[:50] }}" required>
+            </div>
+            <div class="form-group">
+                <label style="font-size:12px">Projet</label>
+                <select name="project_code" class="form-control" style="font-size:12px" required>
+                    <option value="">— Selectionner —</option>
+                    {% for p in projects %}
+                    <option value="{{ p.code }}" {% if email.project_code == p.code %}selected{% endif %}>{{ p.name }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <button type="submit" class="btn btn-sm btn-primary" style="width:100%;font-size:11px">📋 Créer une tâche</button>
+        </form>
+    </div>
+
+    <!-- Métadonnées -->
+    <div class="card">
+        <div class="card-header">ℹ️ Détails</div>
+        <div style="font-size:12px;line-height:1.8">
+            <div><strong>De :</strong> {{ email.sender }}</div>
+            {% if email.recipients %}<div><strong>À :</strong> {{ email.recipients }}</div>{% endif %}
+            {% if email.cc %}<div><strong>CC :</strong> {{ email.cc }}</div>{% endif %}
+            <div><strong>Date :</strong> {{ email.date_time }}</div>
+            {% if email.has_attachments %}<div>📎 Contient des pièces jointes</div>{% endif %}
+            <div><strong>ID :</strong> <code style="font-size:10px;word-break:break-all">{{ email.id }}</code></div>
+        </div>
+    </div>
+</div>
+
+</div>
+{% endblock %}

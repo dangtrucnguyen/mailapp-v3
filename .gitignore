@@ -1,0 +1,43 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# Node
+frontend/node_modules/
+frontend/dist/
+
+# Tauri
+frontend/src-tauri/target/
+
+# Data
+data/mailstore/emails/
+data/mailstore/files/
+data/*.db
+data/*.db-journal
+data/*.db-wal
+data/*.db-shm
+mailbox_v1_archived/
+*.eml
+
+# Credentials
+.mailapp.env
+*.env
+
+# IDE
+.idea/
+.vscode/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Static dist (built by CI)
+static/dist/
+
+# Temp
+/tmp/
+*.log

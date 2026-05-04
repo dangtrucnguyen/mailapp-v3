@@ -1,0 +1,30 @@
+[package]
+name = "mailapp"
+version = "3.0.0-beta.1"
+description = "MailApp Native Desktop Client - SCIngenierie"
+authors = ["SCIngenierie"]
+edition = "2021"
+rust-version = "1.70"
+
+[lib]
+name = "mailapp_lib"
+crate-type = ["lib", "cdylib", "staticlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = ["tray-icon"] }
+tauri-plugin-opener = "2"
+tauri-plugin-notification = "2"
+tauri-plugin-shell = "2"
+tauri-plugin-dialog = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[profile.release]
+panic = "abort"
+codegen-units = 1
+lto = true
+opt-level = "s"
+strip = true

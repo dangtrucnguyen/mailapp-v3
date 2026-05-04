@@ -1,0 +1,29 @@
+// Global styles
+:root {
+  --border-radius: 8px;
+}
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: #f8fafc;
+}
+.q-page { min-height: calc(100vh - 50px); }
+
+// Cards
+.card-hover { cursor: pointer; transition: transform .15s, box-shadow .15s; }
+.card-hover:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,.1); }
+
+// Priority colors
+.priority-urgente { border-left: 4px solid $negative; }
+.priority-haute { border-left: 4px solid $warning; }
+.priority-normale { border-left: 4px solid $info; }
+.priority-basse { border-left: 4px solid $secondary; }
+
+// Kanban
+.kanban-drag-over { background: rgba($primary, .05); border-color: $primary !important; }
+
+// Mobile
+@media (max-width: 599px) {
+  .q-page { padding: 12px; }
+  .q-table th { font-size: 12px; }
+  .q-table td { font-size: 13px; }
+}

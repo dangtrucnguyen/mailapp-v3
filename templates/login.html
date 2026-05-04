@@ -1,0 +1,99 @@
+{% extends "base.html" %}
+{% block title %}Connexion — MailApp V3{% endblock %}
+{% block extra_head %}
+<style>
+    .login-wrapper {
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: linear-gradient(135deg, #eff6ff, #f8fafc);
+        padding: 20px;
+    }
+    .login-card {
+        background: var(--surface);
+        border-radius: 16px;
+        box-shadow: 0 4px 24px rgba(0,0,0,.08);
+        padding: 40px;
+        width: 100%;
+        max-width: 420px;
+        border: 1px solid var(--border);
+    }
+    .login-logo {
+        text-align: center;
+        margin-bottom: 32px;
+    }
+    .login-logo h1 { font-size: 28px; font-weight: 700; color: var(--primary); }
+    .login-logo p { color: var(--text-muted); font-size: 14px; margin-top: 4px; }
+    .btn-block { width: 100%; justify-content: center; padding: 12px; }
+    .login-footer {
+        text-align: center;
+        margin-top: 20px;
+        font-size: 14px;
+        color: var(--text-muted);
+    }
+    .login-footer a { color: var(--primary); text-decoration: none; font-weight: 500; }
+    .login-footer a:hover { text-decoration: underline; }
+</style>
+{% endblock %}
+{% block content %}
+<div class="login-wrapper">
+    <div class="login-card">
+        <div class="login-logo">
+            <h1>📧 MailApp V3</h1>
+            <p>Application email & gestion de projets</p>
+        </div>
+
+        {% if error %}
+        <div class="alert alert-error">{{ error }}</div>
+        {% endif %}
+
+        <form method="POST" action="/api/auth/login">
+            <div class="form-group">
+                <label>Nom d'utilisateur</label>
+                <input type="text" name="username" class="form-control" placeholder="admin" required autofocus>
+            </div>
+            <div class="form-group">
+                <label>Mot de passe</label>
+                <input type="password" name="password" class="form-control" placeholder="••••••••" required>
+            </div>
+            <button type="submit" class="btn btn-primary btn-block">Se connecter</button>
+        </form>
+
+        <div class="login-footer">
+            Pas encore de compte ? <a href="/register">Creer un compte</a>
+        </div>
+    </div>
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+document.querySelector('form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const form = e.target;
+    const data = new FormData(form);
+
+    try {
+        const res = await fetch(form.action, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(Object.fromEntries(data))
+        });
+        if (res.ok) {
+            window.location = '/dashboard';
+        } else {
+            const err = await res.json();
+            const alert = document.createElement('div');
+            alert.className = 'alert alert-error';
+            alert.textContent = err.detail || 'Erreur de connexion';
+            form.insertBefore(alert, form.firstChild);
+        }
+    } catch {
+        const alert = document.createElement('div');
+        alert.className = 'alert alert-error';
+        alert.textContent = 'Erreur reseau';
+        form.insertBefore(alert, form.firstChild);
+    }
+});
+</script>
+{% endblock %}

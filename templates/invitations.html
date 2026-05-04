@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+{% block title %}Invitations — MailApp V3{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1>✉️ Invitations</h1>
+    <a href="/admin/users" class="btn btn-outline">← Retour aux utilisateurs</a>
+</div>
+
+{% if request.query_params.get('ok') == '1' %}
+<div class="alert alert-success">Invitation envoyee ! Le lien est affiche dans les logs du serveur.</div>
+{% endif %}
+{% if request.query_params.get('ok') == '2' %}
+<div class="alert alert-info">Lien d'invitation renvoye (voir logs serveur).</div>
+{% endif %}
+
+<div class="card">
+    <div class="card-header">Nouvelle invitation</div>
+    <form method="POST" action="/admin/api/users/invite" style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap">
+        <div class="form-group" style="flex:1;min-width:200px;margin-bottom:0">
+            <label>Email du collaborateur</label>
+            <input type="email" name="email" class="form-control" placeholder="collegue@exemple.fr" required>
+        </div>
+        <div class="form-group" style="margin-bottom:0">
+            <label>Role</label>
+            <select name="role" class="form-control" style="width:auto">
+                <option value="utilisateur">Utilisateur</option>
+                <option value="manager">Manager</option>
+                <option value="admin">Admin</option>
+            </select>
+        </div>
+        <button type="submit" class="btn btn-primary" style="margin-bottom:0">Envoyer l'invitation</button>
+    </form>
+</div>
+
+<!-- En attente -->
+<div class="card">
+    <div class="card-header">En attente ({{ pending | length }})</div>
+    {% if pending %}
+    <table class="table">
+        <thead>
+            <tr><th>Email</th><th>Role</th><th>Envoyee par</th><th>Date</th><th>Expire</th><th>Action</th></tr>
+        </thead>
+        <tbody>
+            {% for inv in pending %}
+            <tr>
+                <td><strong>{{ inv.email }}</strong></td>
+                <td><span class="badge badge-{{ inv.role }}">{{ inv.role }}</span></td>
+                <td>{{ inv.invited_by }}</td>
+                <td>{{ inv.created_at[:16] }}</td>
+                <td style="color:var(--text-muted)">{{ inv.expires_at[:16] }}</td>
+                <td>
+                    <form method="POST" action="/admin/api/users/invite/resend" style="display:inline">
+                        <input type="hidden" name="token" value="{{ inv.token }}">
+                        <button type="submit" class="btn btn-sm btn-outline">Renvoyer</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p style="color:var(--text-muted);padding:12px">Aucune invitation en attente.</p>
+    {% endif %}
+</div>
+
+<!-- Acceptees -->
+<div class="card">
+    <div class="card-header">Acceptees ({{ accepted | length }})</div>
+    {% if accepted %}
+    <table class="table">
+        <thead>
+            <tr><th>Email</th><th>Role</th><th>Acceptee le</th></tr>
+        </thead>
+        <tbody>
+            {% for inv in accepted %}
+            <tr>
+                <td>{{ inv.email }}</td>
+                <td><span class="badge badge-{{ inv.role }}">{{ inv.role }}</span></td>
+                <td>{{ inv.accepted_at[:16] }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+    <p style="color:var(--text-muted);padding:12px">Aucune invitation acceptee pour le moment.</p>
+    {% endif %}
+</div>
+{% endblock %}

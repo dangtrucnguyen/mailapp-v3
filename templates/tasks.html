@@ -1,0 +1,365 @@
+{% extends "base.html" %}
+{% block title %}Tâches — MailApp V3{% endblock %}
+{% block extra_head %}
+<style>
+/* Kanban */
+.kanban-board {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin-top: 16px;
+}
+.kanban-column {
+    background: var(--bg);
+    border-radius: var(--radius);
+    padding: 12px;
+    min-height: 200px;
+    border: 2px dashed transparent;
+    transition: border-color .2s;
+}
+.kanban-column.drag-over {
+    border-color: var(--primary);
+    background: #eff6ff;
+}
+.kanban-column-header {
+    font-weight: 700;
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: .5px;
+    color: var(--text-muted);
+    margin-bottom: 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.kanban-column-header .count {
+    background: var(--border);
+    border-radius: 10px;
+    padding: 1px 8px;
+    font-size: 11px;
+}
+.task-card {
+    background: var(--surface);
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    padding: 12px;
+    margin-bottom: 8px;
+    cursor: grab;
+    transition: box-shadow .15s;
+    position: relative;
+}
+.task-card:hover { box-shadow: var(--shadow); }
+.task-card:active { cursor: grabbing; }
+.task-card.dragging { opacity: .5; }
+.task-card-code {
+    font-size: 11px;
+    color: var(--primary);
+    font-weight: 700;
+    margin-bottom: 4px;
+}
+.task-card-title {
+    font-size: 14px;
+    font-weight: 500;
+    margin-bottom: 6px;
+}
+.task-card-meta {
+    font-size: 11px;
+    color: var(--text-muted);
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+.priority-basse { border-left: 3px solid #9ca3af; }
+.priority-normale { border-left: 3px solid #3b82f6; }
+.priority-haute { border-left: 3px solid #f59e0b; }
+.priority-urgente { border-left: 3px solid #ef4444; }
+
+/* Modale */
+.modal-overlay {
+    display: none;
+    position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(0,0,0,.5); z-index: 1000;
+    align-items: center; justify-content: center;
+}
+.modal-overlay.active { display: flex; }
+.modal-content {
+    background: var(--surface);
+    border-radius: var(--radius);
+    padding: 24px;
+    width: 90%;
+    max-width: 560px;
+    max-height: 85vh;
+    overflow-y: auto;
+}
+.modal-header {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 16px;
+}
+.modal-header h2 { font-size: 18px; }
+.modal-close {
+    background: none; border: none; font-size: 24px; cursor: pointer;
+    color: var(--text-muted);
+}
+
+/* Mobile */
+@media (max-width: 768px) {
+    .kanban-board {
+        grid-template-columns: 1fr;
+    }
+    .kanban-column {
+        display: none;
+    }
+    .kanban-column.mobile-active {
+        display: block;
+    }
+    .kanban-tabs {
+        display: flex;
+        gap: 4px;
+        overflow-x: auto;
+        padding-bottom: 8px;
+    }
+    .kanban-tab {
+        padding: 6px 12px;
+        border-radius: 6px;
+        font-size: 13px;
+        font-weight: 500;
+        border: 1px solid var(--border);
+        background: var(--surface);
+        cursor: pointer;
+        white-space: nowrap;
+    }
+    .kanban-tab.active {
+        background: var(--primary);
+        color: white;
+        border-color: var(--primary);
+    }
+}
+
+@media (min-width: 769px) {
+    .kanban-tabs { display: none; }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1>📋 Tâches</h1>
+    <button class="btn btn-primary" onclick="openModal()">+ Nouvelle tâche</button>
+</div>
+
+{% if request.query_params.get('ok') %}
+<div class="alert alert-success">
+    {% if request.query_params.get('ok') == '1' %}Tâche créée avec succès.{% endif %}
+    {% if request.query_params.get('ok') == '2' %}Tâche mise à jour.{% endif %}
+    {% if request.query_params.get('ok') == '3' %}Tâche supprimée.{% endif %}
+</div>
+{% endif %}
+
+<!-- Onglets mobile -->
+<div class="kanban-tabs" id="kanbanTabs">
+    {% for st in statuses %}
+    <button class="kanban-tab {% if loop.first %}active{% endif %}" data-status="{{ st }}">
+        {{ st }} <span style="font-size:11px;opacity:.7">({{ tasks | selectattr('status', 'equalto', st) | list | length }})</span>
+    </button>
+    {% endfor %}
+</div>
+
+<!-- Kanban -->
+<div class="kanban-board" id="kanbanBoard">
+    {% for st in statuses %}
+    <div class="kanban-column {% if loop.first %}mobile-active{% endif %}" data-status="{{ st }}"
+         ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event, '{{ st }}')">
+        <div class="kanban-column-header">
+            {{ st }}
+            <span class="count">{{ tasks | selectattr('status', 'equalto', st) | list | length }}</span>
+        </div>
+        {% for task in tasks %}
+        {% if task.status == st %}
+        <div class="task-card priority-{{ task.priority | lower }}" draggable="true"
+             data-task-id="{{ task.id }}"
+             ondragstart="handleDragStart(event)"
+             ondragend="handleDragEnd(event)"
+             onclick="openEditModal({{ task | tojson | safe }})">
+            <div class="task-card-code">{{ task.code }}</div>
+            <div class="task-card-title">{{ task.title }}</div>
+            <div class="task-card-meta">
+                <span>📁 {{ task.project_name or task.project_code }}</span>
+                {% if task.assignee_name %}
+                <span>👤 {{ task.assignee_name }}</span>
+                {% endif %}
+                {% if task.due_date %}
+                <span>📅 {{ task.due_date[:10] }}</span>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+        {% endfor %}
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Modale création / édition -->
+<div class="modal-overlay" id="taskModal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h2 id="modalTitle">Nouvelle tâche</h2>
+            <button class="modal-close" onclick="closeModal()">&times;</button>
+        </div>
+        <form id="taskForm" method="POST" action="/tasks/api/create">
+            <input type="hidden" name="task_id" id="taskId">
+            <div class="form-group">
+                <label>Titre *</label>
+                <input type="text" name="title" id="taskTitle" class="form-control" required>
+            </div>
+            <div class="form-group">
+                <label>Description</label>
+                <textarea name="description" id="taskDesc" class="form-control" rows="3"></textarea>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+                <div class="form-group">
+                    <label>Projet *</label>
+                    <select name="project_code" id="taskProject" class="form-control" required>
+                        <option value="">— Selectionner —</option>
+                        {% for p in projects %}
+                        <option value="{{ p.code }}">{{ p.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Statut</label>
+                    <select name="status" id="taskStatus" class="form-control">
+                        {% for st in statuses %}
+                        <option value="{{ st }}">{{ st }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+                <div class="form-group">
+                    <label>Priorité</label>
+                    <select name="priority" id="taskPriority" class="form-control">
+                        {% for pri in priorities %}
+                        <option value="{{ pri }}">{{ pri }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Assigné à</label>
+                    <select name="assigned_to" id="taskAssigned" class="form-control">
+                        <option value="">— Non assigné —</option>
+                        {% for u in users_list %}
+                        <option value="{{ u.id }}">{{ u.display_name or u.username }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Date d'échéance</label>
+                <input type="date" name="due_date" id="taskDueDate" class="form-control">
+            </div>
+            <div class="form-group">
+                <label>Email lié</label>
+                <select name="email_id" id="taskEmail" class="form-control">
+                    <option value="">— Aucun —</option>
+                    {% for e in recent_emails %}
+                    <option value="{{ e.id }}">{{ e.subject[:60] }} ({{ e.sender[:30] }})</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div style="display:flex;gap:8px;justify-content:flex-end">
+                <button type="button" class="btn btn-outline" onclick="closeModal()">Annuler</button>
+                <button type="submit" class="btn btn-primary">Enregistrer</button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let draggedTaskId = null;
+
+// ─── Mobile tabs ────────────────────────────────────────────────────
+document.querySelectorAll('.kanban-tab').forEach(tab => {
+    tab.addEventListener('click', () => {
+        document.querySelectorAll('.kanban-tab').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        document.querySelectorAll('.kanban-column').forEach(col => col.classList.remove('mobile-active'));
+        document.querySelector(`.kanban-column[data-status="${tab.dataset.status}"]`).classList.add('mobile-active');
+    });
+});
+
+// ─── Drag & Drop ─────────────────────────────────────────────────────
+function handleDragStart(e) {
+    draggedTaskId = e.target.closest('.task-card').dataset.taskId;
+    e.target.closest('.task-card').classList.add('dragging');
+}
+function handleDragEnd(e) {
+    e.target.closest('.task-card').classList.remove('dragging');
+    document.querySelectorAll('.kanban-column').forEach(c => c.classList.remove('drag-over'));
+}
+function handleDragOver(e) {
+    e.preventDefault();
+    e.currentTarget.classList.add('drag-over');
+}
+function handleDragLeave(e) {
+    e.currentTarget.classList.remove('drag-over');
+}
+async function handleDrop(e, newStatus) {
+    e.preventDefault();
+    e.currentTarget.classList.remove('drag-over');
+    if (!draggedTaskId) return;
+
+    try {
+        const res = await fetch(`/tasks/api/${draggedTaskId}/status`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ status: newStatus })
+        });
+        if (res.ok) location.reload();
+    } catch (err) {
+        console.error('Drag drop error:', err);
+    }
+}
+
+// ─── Modale ──────────────────────────────────────────────────────────
+function openModal() {
+    document.getElementById('modalTitle').textContent = 'Nouvelle tâche';
+    document.getElementById('taskForm').action = '/tasks/api/create';
+    document.getElementById('taskId').value = '';
+    document.getElementById('taskTitle').value = '';
+    document.getElementById('taskDesc').value = '';
+    document.getElementById('taskProject').value = '';
+    document.getElementById('taskStatus').value = 'A faire';
+    document.getElementById('taskPriority').value = 'Normale';
+    document.getElementById('taskAssigned').value = '';
+    document.getElementById('taskDueDate').value = '';
+    document.getElementById('taskEmail').value = '';
+    document.getElementById('taskModal').classList.add('active');
+}
+
+function openEditModal(task) {
+    document.getElementById('modalTitle').textContent = 'Modifier ' + task.code;
+    document.getElementById('taskForm').action = '/tasks/api/' + task.id + '/update';
+    document.getElementById('taskId').value = task.id;
+    document.getElementById('taskTitle').value = task.title || '';
+    document.getElementById('taskDesc').value = task.description || '';
+    document.getElementById('taskProject').value = task.project_code || '';
+    document.getElementById('taskStatus').value = task.status || 'A faire';
+    document.getElementById('taskPriority').value = task.priority || 'Normale';
+    document.getElementById('taskAssigned').value = task.assigned_to || '';
+    document.getElementById('taskDueDate').value = task.due_date ? task.due_date.slice(0,10) : '';
+    document.getElementById('taskEmail').value = '';
+    document.getElementById('taskModal').classList.add('active');
+}
+
+function closeModal() {
+    document.getElementById('taskModal').classList.remove('active');
+}
+
+// Fermer modale au clic extérieur
+document.getElementById('taskModal').addEventListener('click', function(e) {
+    if (e.target === this) closeModal();
+});
+</script>
+{% endblock %}

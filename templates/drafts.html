@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}Brouillons — MailApp V3{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1>💾 Brouillons</h1>
+</div>
+
+{% if request.query_params.get('ok') == 'draft_saved' %}
+<div class="alert alert-success">Brouillon sauvegardé.</div>
+{% elif request.query_params.get('ok') == 'draft_deleted' %}
+<div class="alert alert-success">Brouillon supprimé.</div>
+{% endif %}
+
+{% if drafts %}
+<div class="card" style="padding:0">
+    <table class="table" style="margin:0">
+        <thead>
+            <tr><th>Destinataire</th><th>Sujet</th><th>Modifié</th><th>Action</th></tr>
+        </thead>
+        <tbody>
+            {% for d in drafts %}
+            <tr>
+                <td style="font-size:13px">{{ d.to_email or '(pas de destinataire)' }}</td>
+                <td>
+                    <a href="/emails/compose?draft={{ d.id }}" style="text-decoration:none;color:var(--text);font-weight:500">
+                        {{ d.subject or '(sans sujet)' }}
+                    </a>
+                </td>
+                <td style="font-size:12px;color:var(--text-muted);white-space:nowrap">{{ d.updated_at[:16] }}</td>
+                <td>
+                    <form method="POST" action="/emails/api/drafts/{{ d.id }}/delete" style="display:inline"
+                          onsubmit="return confirm('Supprimer ce brouillon ?')">
+                        <button class="btn btn-sm btn-danger">🗑️</button>
+                    </form>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% else %}
+<div class="card" style="text-align:center;padding:40px">
+    <p style="font-size:18px;color:var(--text-muted)">📝 Aucun brouillon</p>
+    <a href="/emails/compose" class="btn btn-primary" style="margin-top:12px">Nouveau message</a>
+</div>
+{% endif %}
+{% endblock %}
