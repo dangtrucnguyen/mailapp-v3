@@ -94,7 +94,7 @@
         <div class="col-12 col-md-8">
           <q-card flat bordered>
             <q-card-section class="q-pa-md">
-              <div v-if="email.body_html" v-html="email.body_html"
+              <div v-if="email.body_html" ref="emailBodyRef"
                    style="max-height:80vh;overflow-y:auto;line-height:1.6"
                    class="email-body-sandbox"></div>
               <div v-else-if="email.body_text"
@@ -202,7 +202,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, nextTick, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import api from '../boot/api'
 import { useQuasar } from 'quasar'
@@ -223,6 +223,7 @@ const recipientsExpanded = ref(false)
 const confirmDelete = ref(false)
 const isArchived = ref(false)
 const attachmentsExpanded = ref(false)
+const emailBodyRef = ref(null)
 const ATTACH_LIMIT = 5
 
 const visibleAttachments = computed(() => {
@@ -291,11 +292,58 @@ onMounted(async () => {
           if (br.data.html) email.value.body_html = br.data.html
         } catch {}
       }
+
+      // Render in Shadow DOM to prevent CSS leaks
+      await nextTick()
+      renderEmailBody()
     }
     if (pr.status === 'fulfilled') {
       projectOptions.value = (pr.value.data.projects || pr.value.data || []).map(p => ({ label: p.name, value: p.code }))
     }
   } catch {}
+})
+
+// Shadow DOM rendering — isolates email CSS from the app
+function renderEmailBody() {
+  const el = emailBodyRef.value
+  if (!el || !email.value?.body_html) return
+
+  // Remove malicious scripts
+  let html = email.value.body_html
+    .replace(/<script[\s\S]*?<\/script>/gi, '')
+    .replace(/ on\w+="[^"]*"/gi, '')  // inline event handlers
+
+  // Create or reuse shadow root
+  let shadow = el.shadowRoot
+  if (!shadow) {
+    shadow = el.attachShadow({ mode: 'open' })
+  }
+
+  // Base reset styles inside shadow — prevent inherited page styles,
+  // but keep email's own styles working
+  shadow.innerHTML = `
+    <style>
+      :host { display: block; }
+      /* Reset common inherited styles that leak from parent */
+      body, div, p, span, a, td, th, h1, h2, h3, h4, h5, h6, ul, ol, li, blockquote, pre, code, table, tr {
+        font-family: inherit;
+        line-height: inherit;
+      }
+      img { max-width: 100%; height: auto; }
+      a { color: #1976d2; }
+      /* Neutralize aggressive resets from email HTML */
+      * { box-sizing: border-box; }
+    </style>
+    ${html}
+  `
+}
+
+// Watch for email body changes (e.g. after cid: fetch)
+watch(() => email.value?.body_html, async (newVal) => {
+  if (newVal) {
+    await nextTick()
+    renderEmailBody()
+  }
 })
 
 function doReply() {
@@ -405,13 +453,6 @@ async function createTask() {
 <style scoped>
 .email-body-sandbox {
   isolation: isolate;
-}
-.email-body-sandbox :deep(*) {
-  max-width: 100%;
-  box-sizing: border-box;
-}
-.email-body-sandbox :deep(img) {
-  max-width: 100%;
-  height: auto;
+  /* Shadow DOM handles all encapsulation, no :deep() needed */
 }
 </style>
